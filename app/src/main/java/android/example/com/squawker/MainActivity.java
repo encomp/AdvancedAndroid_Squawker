@@ -1,19 +1,3 @@
-/*
-* Copyright (C) 2017 The Android Open Source Project
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*  	http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
 package android.example.com.squawker;
 
 import android.content.Intent;
@@ -22,6 +6,7 @@ import android.example.com.squawker.following.FollowingPreferenceActivity;
 import android.example.com.squawker.provider.SquawkContract;
 import android.example.com.squawker.provider.SquawkProvider;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
@@ -34,118 +19,132 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity implements
-        LoaderManager.LoaderCallbacks<Cursor> {
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 
-    private static String LOG_TAG = MainActivity.class.getSimpleName();
-    private static final int LOADER_ID_MESSAGES = 0;
+public class MainActivity extends AppCompatActivity
+    implements LoaderManager.LoaderCallbacks<Cursor> {
 
-    RecyclerView mRecyclerView;
-    LinearLayoutManager mLayoutManager;
-    SquawkAdapter mAdapter;
+  private static String LOG_TAG = MainActivity.class.getSimpleName();
+  private static final int LOADER_ID_MESSAGES = 0;
 
-    static final String[] MESSAGES_PROJECTION = {
-            SquawkContract.COLUMN_AUTHOR,
-            SquawkContract.COLUMN_MESSAGE,
-            SquawkContract.COLUMN_DATE,
-            SquawkContract.COLUMN_AUTHOR_KEY
-    };
+  RecyclerView mRecyclerView;
+  LinearLayoutManager mLayoutManager;
+  SquawkAdapter mAdapter;
 
-    static final int COL_NUM_AUTHOR = 0;
-    static final int COL_NUM_MESSAGE = 1;
-    static final int COL_NUM_DATE = 2;
-    static final int COL_NUM_AUTHOR_KEY = 3;
+  static final String[] MESSAGES_PROJECTION = {
+    SquawkContract.COLUMN_AUTHOR,
+    SquawkContract.COLUMN_MESSAGE,
+    SquawkContract.COLUMN_DATE,
+    SquawkContract.COLUMN_AUTHOR_KEY
+  };
 
+  static final int COL_NUM_AUTHOR = 0;
+  static final int COL_NUM_MESSAGE = 1;
+  static final int COL_NUM_DATE = 2;
+  static final int COL_NUM_AUTHOR_KEY = 3;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
 
-        mRecyclerView = (RecyclerView) findViewById(R.id.squawks_recycler_view);
+    mRecyclerView = (RecyclerView) findViewById(R.id.squawks_recycler_view);
 
-        // Use this setting to improve performance if you know that changes
-        // in content do not change the layout size of the RecyclerView
-        mRecyclerView.setHasFixedSize(true);
+    // Use this setting to improve performance if you know that changes
+    // in content do not change the layout size of the RecyclerView
+    mRecyclerView.setHasFixedSize(true);
 
-        // Use a linear layout manager
-        mLayoutManager = new LinearLayoutManager(this);
-        mRecyclerView.setLayoutManager(mLayoutManager);
+    // Use a linear layout manager
+    mLayoutManager = new LinearLayoutManager(this);
+    mRecyclerView.setLayoutManager(mLayoutManager);
 
-        // Add dividers
-        DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(
-                mRecyclerView.getContext(),
-                mLayoutManager.getOrientation());
-        mRecyclerView.addItemDecoration(dividerItemDecoration);
+    // Add dividers
+    DividerItemDecoration dividerItemDecoration =
+        new DividerItemDecoration(mRecyclerView.getContext(), mLayoutManager.getOrientation());
+    mRecyclerView.addItemDecoration(dividerItemDecoration);
 
-        // Specify an adapter
-        mAdapter = new SquawkAdapter();
-        mRecyclerView.setAdapter(mAdapter);
+    // Specify an adapter
+    mAdapter = new SquawkAdapter();
+    mRecyclerView.setAdapter(mAdapter);
 
-        // Start the loader
-        getSupportLoaderManager().initLoader(LOADER_ID_MESSAGES, null, this);
+    // Start the loader
+    getSupportLoaderManager().initLoader(LOADER_ID_MESSAGES, null, this);
 
-        // Gets the extra data from the intent that started the activity. For *notification*
-        // messages, this will contain key value pairs stored in the *data* section of the message.
-        Bundle extras = getIntent().getExtras();
-        // Checks if the extras exist and if the key "test" from our FCM message is in the intent
-        if (extras != null && extras.containsKey("test")) {
-            // If the key is there, print out the value of "test"
-            Log.d(LOG_TAG, "Contains: " + extras.getString("test"));
-        }
-
-        // TODO (1) Make a new package for your FCM service classes called "fcm"
-            // TODO (2) Create a new Service class that extends FirebaseInstanceIdService.
-            // You'll need to implement the onTokenRefresh method. Simply have it print out
-            // the new token.
-        // TODO (3) Here, in MainActivity, get a token using FirebaseInstanceId.getInstance().getToken()
-        // TODO (4) Get the message from that token and print it in a log statement
-
-
+    // Gets the extra data from the intent that started the activity. For *notification*
+    // messages, this will contain key value pairs stored in the *data* section of the message.
+    Bundle extras = getIntent().getExtras();
+    // Checks if the extras exist and if the key "test" from our FCM message is in the intent
+    if (extras != null && extras.containsKey("test")) {
+      // If the key is there, print out the value of "test"
+      Log.d(LOG_TAG, "Contains: " + extras.getString("test"));
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.main_menu, menu);
-        return true;
+    FirebaseInstanceId.getInstance()
+        .getInstanceId()
+        .addOnCompleteListener(
+            new OnCompleteListener<InstanceIdResult>() {
+              @Override
+              public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                if (!task.isSuccessful()) {
+                  Log.i(LOG_TAG, "getInstanceId failed", task.getException());
+                  return;
+                }
+                String token = task.getResult().getToken();
+                String msg = String.format("Token: [%s].", token);
+                Log.i(LOG_TAG, msg);
+                Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+              }
+            });
+  }
+
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    MenuInflater inflater = getMenuInflater();
+    inflater.inflate(R.menu.main_menu, menu);
+    return true;
+  }
+
+  @Override
+  public boolean onOptionsItemSelected(MenuItem item) {
+    int id = item.getItemId();
+    if (id == R.id.action_following_preferences) {
+      // Opens the following activity when the menu icon is pressed
+      Intent startFollowingActivity = new Intent(this, FollowingPreferenceActivity.class);
+      startActivity(startFollowingActivity);
+      return true;
     }
+    return super.onOptionsItemSelected(item);
+  }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.action_following_preferences) {
-            // Opens the following activity when the menu icon is pressed
-            Intent startFollowingActivity = new Intent(this, FollowingPreferenceActivity.class);
-            startActivity(startFollowingActivity);
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
+  /** Loader callbacks */
+  @Override
+  public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+    // This method generates a selection off of only the current followers
+    String selection =
+        SquawkContract.createSelectionForCurrentFollowers(
+            PreferenceManager.getDefaultSharedPreferences(this));
+    Log.d(LOG_TAG, "Selection is " + selection);
+    return new CursorLoader(
+        this,
+        SquawkProvider.SquawkMessages.CONTENT_URI,
+        MESSAGES_PROJECTION,
+        selection,
+        null,
+        SquawkContract.COLUMN_DATE + " DESC");
+  }
 
+  @Override
+  public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+    mAdapter.swapCursor(data);
+  }
 
-    /**
-     * Loader callbacks
-     */
-
-    @Override
-    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        // This method generates a selection off of only the current followers
-        String selection = SquawkContract.createSelectionForCurrentFollowers(
-                PreferenceManager.getDefaultSharedPreferences(this));
-        Log.d(LOG_TAG, "Selection is " + selection);
-        return new CursorLoader(this, SquawkProvider.SquawkMessages.CONTENT_URI,
-                MESSAGES_PROJECTION, selection, null, SquawkContract.COLUMN_DATE + " DESC");
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        mAdapter.swapCursor(data);
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> loader) {
-        mAdapter.swapCursor(null);
-    }
+  @Override
+  public void onLoaderReset(Loader<Cursor> loader) {
+    mAdapter.swapCursor(null);
+  }
 }
