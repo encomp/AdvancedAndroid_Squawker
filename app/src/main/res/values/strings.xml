@@ -15,6 +15,7 @@
     <string name="menu_title_following_settings">Following</string>
 
     <!-- Message and Notification Strings -->
+    <string name="main_notification_channel_name">Primary</string>
     <string name="notification_message">"New squawk from %1$s"</string>
     <string name="toast_refresh">Refreshing Data</string>
     <string name="message_token_format" translatable="false">InstanceID Token: %s</string>
